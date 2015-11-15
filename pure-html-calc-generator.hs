@@ -86,4 +86,6 @@ main = do
   sequence $ map mknumselectfile l2
   sequence $ map mknumselectfile l3
   
+  putStrLn "Done."
+
   return ()
