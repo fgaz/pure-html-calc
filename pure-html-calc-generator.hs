@@ -1,5 +1,5 @@
 import System.Directory (createDirectoryIfMissing)
-import Data.List (intersperse)
+import Data.List (intersperse, intercalate)
 
 
 ch2f '+' = (+)
@@ -32,34 +32,34 @@ template enablenums enableops screen = "\
   \  <h1>Pure HTML Calculator</h1>\
   \  <h2><pre>[HTMLcalc]&gt; " ++ screen ++ "</pre></h2>\
   \  <form>\
-  \ " ++ (concat $ map (mkbtn' enablenums) nums) ++ " \
-  \ " ++ (concat $ map (mkbtn' enableops) ops) ++ " \
-  \ " ++ mkbtn ((length screen) /= 0) "←" ".." ++ " \
-  \ " ++ mkbtn ((length screen) /= 0) "C" (concat $ intersperse "/" $ replicate (length $ takeWhile (/= '=') screen) "..") ++ " \
+  \ " ++ concatMap (mkbtn' enablenums) nums ++ " \
+  \ " ++ concatMap (mkbtn' enableops) ops ++ " \
+  \ " ++ mkbtn (not $ null screen) "←" ".." ++ " \
+  \ " ++ mkbtn (not $ null screen) "C" (intercalate "/" $ replicate (length $ takeWhile (/= '=') screen) "..") ++ " \
   \  </form>\
   \  <p>By <a href=\"http://fgaz.github.io\">fgaz</a></p>\
   \</body>\
   \ "
   where
     btnattr enabled x = "formaction=\"" ++ x ++ "/index.html\" " ++ (if enabled then "" else "disabled")
-    mkbtn enabled name dest = "<button type=\"submit\" " ++ (btnattr enabled dest) ++ ">" ++ name ++ "</button>"
+    mkbtn enabled name dest = "<button type=\"submit\" " ++ btnattr enabled dest ++ ">" ++ name ++ "</button>"
     mkbtn' enabled x = mkbtn enabled x x
 
 --generates the html of a result page
-resulthtml actions = template False False $ (actions ++ "=" ++ (show $ calcresult actions))
+resulthtml actions = template False False (actions ++ "=" ++ show (calcresult actions))
 
 --all the file-making functions
-mkresultfile actions = writeFile ((actions2dir actions) ++ "/index.html") $ resulthtml actions
-mknumselectfile actions = writeFile ((actions2dir actions) ++ "/index.html") $ template True False actions
-mkopselectfile  actions = writeFile ((actions2dir actions) ++ "/index.html") $ template False True actions
+mkresultfile actions = writeFile (actions2dir actions ++ "/index.html") $ resulthtml actions
+mknumselectfile actions = writeFile (actions2dir actions ++ "/index.html") $ template True False actions
+mkopselectfile  actions = writeFile (actions2dir actions ++ "/index.html") $ template False True actions
 
 calcresult str = f a b
   where
-    a = read ((str!!0):(str!!1):[]) --first number
-    b = read ((str!!3):(str!!4):[]) --second number
+    a = read $ take 2 str --first number
     f = ch2f (str!!2) --operator
+    b = read $ drop 3 str --second number
 
-actions2dir = ("build/"++) . (intersperse '/')
+actions2dir = ("build/"++) . intersperse '/'
 
 main :: IO ()
 main = do
@@ -77,14 +77,14 @@ main = do
   let l4 = l3 >>= plusnums
   
   --first all the folders
-  sequence $ map (mkdir . actions2dir) l4
+  mapM_ (mkdir . actions2dir) l4
   --then the result files
-  sequence $ map mkresultfile l4
+  mapM_ mkresultfile l4
   --then all the others
-  sequence $ map mknumselectfile l0
-  sequence $ map mkopselectfile l1
-  sequence $ map mknumselectfile l2
-  sequence $ map mknumselectfile l3
+  mapM_ mknumselectfile l0
+  mapM_ mkopselectfile l1
+  mapM_ mknumselectfile l2
+  mapM_ mknumselectfile l3
   
   putStrLn "Done."
 
